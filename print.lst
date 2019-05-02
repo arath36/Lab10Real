@@ -1,0 +1,368 @@
+
+
+
+ARM Macro Assembler    Page 1 
+
+
+    1 00000000         ; Print.s
+    2 00000000         ; Student names: Austin Rath and Rohan Narayanan
+    3 00000000         ; Last modification date: change this to the last modifi
+                       cation date or look very silly
+    4 00000000         ; Runs on LM4F120 or TM4C123
+    5 00000000         ; EE319K lab 7 device driver for any LCD
+    6 00000000         ;
+    7 00000000         ; As part of Lab 7, students need to implement these LCD
+                       _OutDec and LCD_OutFix
+    8 00000000         ; This driver assumes two low-level LCD functions
+    9 00000000         ; ST7735_OutChar   outputs a single 8-bit ASCII characte
+                       r
+   10 00000000         ; ST7735_OutString outputs a null-terminated string 
+   11 00000000         
+   12 00000000         
+   13 00000000         ;OutDec 
+   14 00000000 00000004 
+                       REM     EQU              4
+   15 00000000         ;OutFix locals
+   16 00000000 00000000 
+                       One     EQU              0
+   17 00000000 00000004 
+                       point   EQU              4
+   18 00000000 00000008 
+                       Tenth   EQU              8
+   19 00000000 0000000C 
+                       Hund    EQU              12
+   20 00000000 00000010 
+                       Thou    EQU              16
+   21 00000000         
+   22 00000000         
+   23 00000000                 IMPORT           ST7735_OutChar
+   24 00000000                 IMPORT           ST7735_OutString
+   25 00000000                 EXPORT           LCD_OutDec
+   26 00000000                 EXPORT           LCD_OutFix
+   27 00000000         
+   28 00000000         
+   29 00000000                 AREA             |.text|, CODE, READONLY, ALIGN=
+2
+   30 00000000                 THUMB
+   31 00000000         
+   32 00000000         
+   33 00000000         
+   34 00000000         ;-----------------------LCD_OutDec----------------------
+                       -
+   35 00000000         ; Output a 32-bit number in unsigned decimal format
+   36 00000000         ; Input: R0 (call by value) 32-bit unsigned number
+   37 00000000         ; Output: none
+   38 00000000         ; Invariables: This function must not permanently modify
+                        registers R4 to R11
+   39 00000000         LCD_OutDec
+   40 00000000         
+   41 00000000 B510            PUSH             {R4, LR}
+   42 00000002 F1BD 0D08       SUBS             SP, #8
+   43 00000006         
+   44 00000006 F04F 010A       MOV              R1, #10
+   45 0000000A FBB0 F2F1       UDIV             R2, R0, R1
+   46 0000000E FB02 F201       MUL              R2, R2, R1
+   47 00000012 EBA0 0302       SUB              R3, R0, R2
+
+
+
+ARM Macro Assembler    Page 2 
+
+
+   48 00000016 9301            STR              R3, [SP, #REM]
+   49 00000018 FBB2 F2F1       UDIV             R2, R2, R1
+   50 0000001C 4610            MOV              R0, R2
+   51 0000001E 2800            CMP              R0, #0
+   52 00000020 D001            BEQ              done
+   53 00000022 F7FF FFFE       BL               LCD_OutDec
+   54 00000026         done
+   55 00000026 9901            LDR              R1, [SP, #REM]
+   56 00000028 F101 0130       ADD              R1, #0X30
+   57 0000002C 4608            MOV              R0, R1
+   58 0000002E F7FF FFFE       BL               ST7735_OutChar
+   59 00000032 F04F 0000       MOV              R0, #0
+   60 00000036 B002            ADD              SP, #8
+   61 00000038 E8BD 4010       POP              {R4, LR}
+   62 0000003C         
+   63 0000003C         
+   64 0000003C 4770            BX               LR
+   65 0000003E         ;* * * * * * * * End of LCD_OutDec * * * * * * * *
+   66 0000003E         
+   67 0000003E         ; -----------------------LCD _OutFix--------------------
+                       --
+   68 0000003E         ; Output characters to LCD display in fixed-point format
+                       
+   69 0000003E         ; unsigned decimal, resolution 0.001, range 0.000 to 9.9
+                       99
+   70 0000003E         ; Inputs:  R0 is an unsigned 32-bit number
+   71 0000003E         ; Outputs: none
+   72 0000003E         ; E.g., R0=0,    then output "0.000 "
+   73 0000003E         ;       R0=3,    then output "0.003 "
+   74 0000003E         ;       R0=89,   then output "0.089 "
+   75 0000003E         ;       R0=123,  then output "0.123 "
+   76 0000003E         ;       R0=9999, then output "9.999 "
+   77 0000003E         ;       R0>9999, then output "*.*** "
+   78 0000003E         ; Invariables: This function must not permanently modify
+                        registers R4 to R11
+   79 0000003E         LCD_OutFix
+   80 0000003E B510            PUSH             {R4, LR}
+   81 00000040 F1BD 0D18       SUBS             SP, #24
+   82 00000044         ;set all to 0 initially plus decimal point
+   83 00000044 F04F 0100       MOV              R1, #0
+   84 00000048 9100            STR              R1, [SP, #One]
+   85 0000004A 9102            STR              R1, [SP, #Tenth]
+   86 0000004C 9103            STR              R1, [SP, #Hund]
+   87 0000004E 9104            STR              R1, [SP, #Thou]
+   88 00000050 F04F 012E       MOV              R1, #0x2E
+   89 00000054 9101            STR              R1, [SP, #point]
+   90 00000056 F242 710F       MOV              R1, #9999
+   91 0000005A 4288            CMP              R0, R1
+   92 0000005C D82A            BHI              stars
+   93 0000005E         
+   94 0000005E         
+   95 0000005E F04F 010A       MOV              R1, #10
+   96 00000062         
+   97 00000062 FBB0 F2F1       UDIV             R2, R0, R1
+   98 00000066 FB02 F301       MUL              R3, R2, R1
+   99 0000006A EBA0 0303       SUB              R3, R0, R3
+  100 0000006E F103 0330       ADD              R3, #0x30
+  101 00000072 9304            STR              R3, [SP, #Thou]
+  102 00000074 4610            MOV              R0, R2
+
+
+
+ARM Macro Assembler    Page 3 
+
+
+  103 00000076         
+  104 00000076 FBB0 F2F1       UDIV             R2, R0, R1
+  105 0000007A FB02 F301       MUL              R3, R2, R1
+  106 0000007E EBA0 0303       SUB              R3, R0, R3
+  107 00000082 F103 0330       ADD              R3, #0x30
+  108 00000086 9303            STR              R3, [SP, #Hund]
+  109 00000088 4610            MOV              R0, R2
+  110 0000008A         
+  111 0000008A FBB0 F2F1       UDIV             R2, R0, R1
+  112 0000008E FB02 F301       MUL              R3, R2, R1
+  113 00000092 EBA0 0303       SUB              R3, R0, R3
+  114 00000096 F103 0330       ADD              R3, #0x30
+  115 0000009A 9302            STR              R3, [SP, #Tenth]
+  116 0000009C 4610            MOV              R0, R2
+  117 0000009E         
+  118 0000009E FBB0 F2F1       UDIV             R2, R0, R1
+  119 000000A2 FB02 F301       MUL              R3, R2, R1
+  120 000000A6 EBA0 0303       SUB              R3, R0, R3
+  121 000000AA F103 0330       ADD              R3, #0x30
+  122 000000AE 9300            STR              R3, [SP, #One]
+  123 000000B0 4610            MOV              R0, R2
+  124 000000B2         
+  125 000000B2         
+  126 000000B2         
+  127 000000B2         
+  128 000000B2         
+  129 000000B2         
+  130 000000B2         
+  131 000000B2         
+  132 000000B2         
+  133 000000B2         
+  134 000000B2 E005            B                skip
+  135 000000B4         stars
+  136 000000B4 F04F 012A       MOV              R1, #0x2A
+  137 000000B8 9100            STR              R1, [SP, #One]
+  138 000000BA 9102            STR              R1, [SP, #Tenth]
+  139 000000BC 9103            STR              R1, [SP, #Hund]
+  140 000000BE 9104            STR              R1, [SP, #Thou]
+  141 000000C0         skip
+  142 000000C0 9800            LDR              R0, [SP, #One]
+  143 000000C2 F7FF FFFE       BL               ST7735_OutChar
+  144 000000C6 9801            LDR              R0, [SP, #point]
+  145 000000C8 F7FF FFFE       BL               ST7735_OutChar
+  146 000000CC 9802            LDR              R0, [SP, #Tenth]
+  147 000000CE F7FF FFFE       BL               ST7735_OutChar
+  148 000000D2 9803            LDR              R0, [SP, #Hund]
+  149 000000D4 F7FF FFFE       BL               ST7735_OutChar
+  150 000000D8 9804            LDR              R0, [SP, #Thou]
+  151 000000DA F7FF FFFE       BL               ST7735_OutChar
+  152 000000DE B006            ADD              SP, #24
+  153 000000E0 E8BD 4010       POP              {R4, LR}
+  154 000000E4 4770            BX               LR
+  155 000000E6         
+  156 000000E6 00 00           ALIGN
+  157 000000E8         ;* * * * * * * * End of LCD_OutFix * * * * * * * *
+  158 000000E8         
+  159 000000E8                 ALIGN                        ; make sure the end
+                                                             of this section is
+                                                             aligned
+
+
+
+ARM Macro Assembler    Page 4 
+
+
+  160 000000E8                 END                          ; end of file
+Command Line: --debug --xref --diag_suppress=9931 --cpu=Cortex-M4 --apcs=interw
+ork --depend=.\print.d -o.\print.o -I.\RTE\_SpaceInvaders -IC:\Keil_v5\ARM\PACK
+\ARM\CMSIS\5.4.0\CMSIS\Core\Include -IC:\Keil_v5\ARM\PACK\Keil\TM4C_DFP\1.1.0\D
+evice\Include\TM4C123 --predefine="__EVAL SETA 1" --predefine="__UVISION_VERSIO
+N SETA 526" --predefine="_RTE_ SETA 1" --predefine="TM4C123GH6PM SETA 1" --list
+=.\print.lst Print.s
+
+
+
+ARM Macro Assembler    Page 1 Alphabetic symbol ordering
+Relocatable symbols
+
+.text 00000000
+
+Symbol: .text
+   Definitions
+      At line 29 in file Print.s
+   Uses
+      None
+Comment: .text unused
+LCD_OutDec 00000000
+
+Symbol: LCD_OutDec
+   Definitions
+      At line 39 in file Print.s
+   Uses
+      At line 25 in file Print.s
+      At line 53 in file Print.s
+
+LCD_OutFix 0000003E
+
+Symbol: LCD_OutFix
+   Definitions
+      At line 79 in file Print.s
+   Uses
+      At line 26 in file Print.s
+Comment: LCD_OutFix used once
+done 00000026
+
+Symbol: done
+   Definitions
+      At line 54 in file Print.s
+   Uses
+      At line 52 in file Print.s
+Comment: done used once
+skip 000000C0
+
+Symbol: skip
+   Definitions
+      At line 141 in file Print.s
+   Uses
+      At line 134 in file Print.s
+Comment: skip used once
+stars 000000B4
+
+Symbol: stars
+   Definitions
+      At line 135 in file Print.s
+   Uses
+      At line 92 in file Print.s
+Comment: stars used once
+6 symbols
+
+
+
+ARM Macro Assembler    Page 1 Alphabetic symbol ordering
+Absolute symbols
+
+Hund 0000000C
+
+Symbol: Hund
+   Definitions
+      At line 19 in file Print.s
+   Uses
+      At line 86 in file Print.s
+      At line 108 in file Print.s
+      At line 139 in file Print.s
+      At line 148 in file Print.s
+
+One 00000000
+
+Symbol: One
+   Definitions
+      At line 16 in file Print.s
+   Uses
+      At line 84 in file Print.s
+      At line 122 in file Print.s
+      At line 137 in file Print.s
+      At line 142 in file Print.s
+
+REM 00000004
+
+Symbol: REM
+   Definitions
+      At line 14 in file Print.s
+   Uses
+      At line 48 in file Print.s
+      At line 55 in file Print.s
+
+Tenth 00000008
+
+Symbol: Tenth
+   Definitions
+      At line 18 in file Print.s
+   Uses
+      At line 85 in file Print.s
+      At line 115 in file Print.s
+      At line 138 in file Print.s
+      At line 146 in file Print.s
+
+Thou 00000010
+
+Symbol: Thou
+   Definitions
+      At line 20 in file Print.s
+   Uses
+      At line 87 in file Print.s
+      At line 101 in file Print.s
+      At line 140 in file Print.s
+      At line 150 in file Print.s
+
+point 00000004
+
+Symbol: point
+   Definitions
+      At line 17 in file Print.s
+   Uses
+
+
+
+ARM Macro Assembler    Page 2 Alphabetic symbol ordering
+Absolute symbols
+
+      At line 89 in file Print.s
+      At line 144 in file Print.s
+
+6 symbols
+
+
+
+ARM Macro Assembler    Page 1 Alphabetic symbol ordering
+External symbols
+
+ST7735_OutChar 00000000
+
+Symbol: ST7735_OutChar
+   Definitions
+      At line 23 in file Print.s
+   Uses
+      At line 58 in file Print.s
+      At line 143 in file Print.s
+      At line 145 in file Print.s
+      At line 147 in file Print.s
+      At line 149 in file Print.s
+      At line 151 in file Print.s
+
+ST7735_OutString 00000000
+
+Symbol: ST7735_OutString
+   Definitions
+      At line 24 in file Print.s
+   Uses
+      None
+Comment: ST7735_OutString unused
+2 symbols
+348 symbols in table
