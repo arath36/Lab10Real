@@ -3,3 +3,4 @@
 .\updatestate.o: ../inc/tm4c123gh6pm.h
 .\updatestate.o: ST7735.h
 .\updatestate.o: ADC.h
+.\updatestate.o: Shoot.h

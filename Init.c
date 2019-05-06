@@ -6,6 +6,7 @@
 #include "ST7735.h"
 #include "PLL.h"
 #include "UpdateState.h"
+#include "Shoot.h"
 
 
 void Init (void) {
@@ -16,7 +17,7 @@ void Init (void) {
 	ADC_Init();
 	SysTick_Init();
 	Init_State();
-	
+	EdgeCounter_Init();
 	
 	
 }

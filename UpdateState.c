@@ -10,8 +10,13 @@
 #define blackHeight 25
 #define bullet_Width 8
 #define bullet_Height 8
+#define Num_Bullets 5
+
+void DisableInterrupts(void); // Disable interrupts
+void EnableInterrupts(void);  // Enable interrupts
 
 extern int shootFlag;
+extern int shootFlag2;
 const unsigned short whiteBullet[] = {
  0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF,
  0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF,
@@ -232,6 +237,7 @@ typedef enum bulletLife {dead = 0, alive = 1} bulletLife_t;
 
 const unsigned short *tanks [4] = {tankUp, tankDown, tankLeft, tankRight};
 typedef struct bullet{
+	
 	int16_t xCoordinate;
 	int16_t yCoordinate;
 	bulletLife_t bulletLife;
@@ -243,17 +249,17 @@ typedef struct bullet{
 
 
 typedef struct Player{
-	uint8_t xCoordinate;
-	uint8_t yCoordinate;
-	uint8_t health;
+	int16_t xCoordinate;
+	int16_t yCoordinate;
+	int8_t health;
 	direction_t direction;
-	bullet_t bullet;
+	bullet_t bullet[Num_Bullets];
 	
 } player_t;
 
 
-player_t player1 = {0, 160, 100, up, {0, 0, dead, up}};
-player_t player2 = {128-Tank_Width, blackHeight + Tank_Height, 100, down, {0, 0, dead, down}};
+player_t player1 = {0, 160, 100, up};
+player_t player2 = {128-Tank_Width, blackHeight + Tank_Height, 100, down};
 
 
 
@@ -261,6 +267,7 @@ player_t player2 = {128-Tank_Width, blackHeight + Tank_Height, 100, down, {0, 0,
 void Init_State(void) {
 	
 	// set up for the screen gameplay
+	// puts tanks in the corners
 	
 	ST7735_FillScreen(0xFFFF);
 	
@@ -282,10 +289,29 @@ void Init_State(void) {
 	
 	ST7735_FillRect(68, 10, 60, 10, 0x57E0);
 	
+	for (int i = 0; i < Num_Bullets; i++) {
+		player1.bullet[i].xCoordinate = 0;
+		player1.bullet[i].yCoordinate = 0;
+		player1.bullet[i].bulletLife = dead;
+		player1.bullet[i].direction = up;
+		
+		
+		player2.bullet[i].xCoordinate = 0;
+		player2.bullet[i].yCoordinate = 0;
+		player2.bullet[i].bulletLife = dead;
+		player2.bullet[i].direction = up;
+		
+	}
+	
 }
 
 
 void UpdatePlayer (player_t* player, uint32_t ADCval[2]) {
+	
+	// Updates the players movement based on the position of the joystick
+	
+	
+	// Here we check if a player is at the edges 
 	
 		if (ADCval[0] > 3600) {
 		player->direction = up;
@@ -322,85 +348,178 @@ void UpdatePlayer (player_t* player, uint32_t ADCval[2]) {
 		
 	}
 	
+	
+	
+	
+	
 }
 
-void UpdateBullet(player_t *player) {
+void UpdateBullet(player_t *player, int *Flag) {
+	// Updates the bullets of each player
+	// Turns bullets alive if the button is pressed and increments all alive bullets for the player passed in
+	// DOES NOT CHECK if the bullet should dissapear
 	
 	
-	if (shootFlag == 1 && player->bullet.bulletLife == dead){
-		player->bullet.bulletLife = alive ;
-		player->bullet.direction = player-> direction ;
+	//Loops through each bullet and updates it
+	for (int i = 0; i<Num_Bullets; i++) {
 		
-		if (player->bullet.direction == up) {
-			player->bullet.xCoordinate = player->xCoordinate + 9 ;
-			player->bullet.yCoordinate = player->yCoordinate - 24 ;
+		
+	// starts the bullet
+	if (*Flag == 1 && player->bullet[i].bulletLife == dead){
+		*Flag = 0;
+		player->bullet[i].bulletLife = alive ;
+		player->bullet[i].direction = player-> direction ;
+		
+		if (player->bullet[i].direction == up) {
+			player->bullet[i].xCoordinate = player->xCoordinate + 9 ;
+			player->bullet[i].yCoordinate = player->yCoordinate - 24 ;
 		}
-		if (player->bullet.direction == down) {
-			player->bullet.xCoordinate = player->xCoordinate +9 ;
-			player->bullet.yCoordinate = player->yCoordinate +4 ;
+		if (player->bullet[i].direction == down) {
+			player->bullet[i].xCoordinate = player->xCoordinate +9 ;
+			player->bullet[i].yCoordinate = player->yCoordinate +4 ;
 		}
-		if (player->bullet.direction == left) {
-			player->bullet.xCoordinate = player->xCoordinate-4 ;
-			player->bullet.yCoordinate = player->yCoordinate - 9 ;
+		if (player->bullet[i].direction == left) {
+			player->bullet[i].xCoordinate = player->xCoordinate-4 ;
+			player->bullet[i].yCoordinate = player->yCoordinate - 9 ;
 		}
-		if (player->bullet.direction == right) {
-			player->bullet.xCoordinate = player->xCoordinate + Tank_Height ;
-			player->bullet.yCoordinate = player->yCoordinate - 9 ;
+		if (player->bullet[i].direction == right) {
+			player->bullet[i].xCoordinate = player->xCoordinate + Tank_Height ;
+			player->bullet[i].yCoordinate = player->yCoordinate - 9 ;
+		}
+		
+		
+		
+	}
+	// increments the bullet
+	if ( player->bullet[i].bulletLife == alive ) {
+		if (player->bullet[i].direction == up) {
+			player->bullet[i].yCoordinate -= 2;
+		}
+		
+		if (player->bullet[i].direction == down) {
+			player->bullet[i].yCoordinate += 2;
+		}
+				
+		if (player->bullet[i].direction == left) {
+			player->bullet[i].xCoordinate -= 2;
+		}
+				
+		if (player->bullet[i].direction == right) {
+			player->bullet[i].xCoordinate += 2;
 		}
 		
 	}
 	
-	if ( player->bullet.bulletLife == alive ) {
-		if (player->bullet.direction == up) {
-			player->bullet.yCoordinate -= 2;
-		}
-		
-		if (player->bullet.direction == down) {
-			player->bullet.yCoordinate += 2;
-		}
-				
-		if (player->bullet.direction == left) {
-			player->bullet.xCoordinate -= 2;
-		}
-				
-		if (player->bullet.direction == right) {
-			player->bullet.xCoordinate += 2;
-		}
-		
-	}
-	
-	if (player-> bullet.bulletLife == dead) {
+	if (player-> bullet[i].bulletLife == dead) {
 		
 	}
 	
 }
+	
+}
+
+
 
 void CheckBullet(player_t *player) {
+
+	// checks all bullets for the player passed in 
+	// makes them dissapear if they should be dead
+	// skips if they are already dead
 	
 	
-	if (player->bullet.bulletLife == alive){
-		if (player->bullet.yCoordinate <= blackHeight + bullet_Height) {
-			player->bullet.bulletLife = dead ;
-			ST7735_DrawBitmap(player1.bullet.xCoordinate, player1.bullet.yCoordinate, whiteBullet, bullet_Width, bullet_Height);
+	// here we check if a bullet has reached an edge
+	
+	for (int i = 0; i<Num_Bullets; i++) {
+	
+	if (player->bullet[i].bulletLife == alive){
+		if (player->bullet[i].yCoordinate <= blackHeight + bullet_Height) {
+			player->bullet[i].bulletLife = dead ;
+			ST7735_DrawBitmap(player->bullet[i].xCoordinate, player->bullet[i].yCoordinate, whiteBullet, bullet_Width, bullet_Height);
 		}
-		if (player->bullet.yCoordinate > 160) {
-			player->bullet.bulletLife = dead ;
-			ST7735_DrawBitmap(player1.bullet.xCoordinate, player1.bullet.yCoordinate, whiteBullet, bullet_Width, bullet_Height);
+		if (player->bullet[i].yCoordinate > 160) {
+			player->bullet[i].bulletLife = dead ;
+			ST7735_DrawBitmap(player->bullet[i].xCoordinate, player->bullet[i].yCoordinate, whiteBullet, bullet_Width, bullet_Height);
 		}
-		if (player->bullet.xCoordinate > 128-bullet_Width ){
-			player->bullet.bulletLife = dead ;
-			ST7735_DrawBitmap(player1.bullet.xCoordinate, player1.bullet.yCoordinate, whiteBullet, bullet_Width, bullet_Height);
+		if (player->bullet[i].xCoordinate > 128-bullet_Width ){
+			player->bullet[i].bulletLife = dead ;
+			ST7735_DrawBitmap(player->bullet[i].xCoordinate, player->bullet[i].yCoordinate, whiteBullet, bullet_Width, bullet_Height);
 		}
-		if (player->bullet.xCoordinate < 0) {
-			player->bullet.bulletLife = dead ;
-			ST7735_DrawBitmap(player1.bullet.xCoordinate, player1.bullet.yCoordinate, whiteBullet, bullet_Width, bullet_Height);
+		if (player->bullet[i].xCoordinate < 0) {
+			player->bullet[i].bulletLife = dead ;
+			ST7735_DrawBitmap(player->bullet[i].xCoordinate, player->bullet[i].yCoordinate, whiteBullet, bullet_Width, bullet_Height);
 		}
+		
+		
+		
+		
 	}
 	
 	
 	
 	
+	
+	
+	
+	// here we check if a bullet has hit another object (rebound)?
+	
+	
+	
 }
+	
+	
+}
+
+
+void CheckPlayerCollision(void){
+	
+	for (int i =0; i<Num_Bullets; i++){
+	
+	if (player2.bullet[i].bulletLife == alive) {
+		
+				int xDifference = player1.xCoordinate - player2.bullet[i].xCoordinate;
+				
+				int yDifference = player1.yCoordinate - player2.bullet[i].yCoordinate;
+				
+				if (xDifference > -(Tank_Width - 5) && xDifference < (bullet_Width-5) && 
+					yDifference > -(bullet_Height-5) && yDifference < (Tank_Height-5)) {
+					
+					 player1.health -= 10;
+					 player2.bullet[i].bulletLife = dead;
+					 ST7735_DrawBitmap(player2.bullet[i].xCoordinate, player2.bullet[i].yCoordinate, whiteBullet, bullet_Width, bullet_Height);
+						
+					
+					
+				} 
+}
+	
+	if (player1.bullet[i].bulletLife == alive) {
+		
+				int xDifference = player2.xCoordinate - player1.bullet[i].xCoordinate;
+				int yDifference = player2.yCoordinate - player1.bullet[i].yCoordinate;
+		
+		
+				if (xDifference > -(Tank_Width - 5) && xDifference < (bullet_Width-5) && 
+					yDifference > -(bullet_Height-5) && yDifference < (Tank_Height-5)) {
+					
+					 player2.health -= 10;
+					 player1.bullet[i].bulletLife = dead;
+					 ST7735_DrawBitmap(player1.bullet[i].xCoordinate, player1.bullet[i].yCoordinate, whiteBullet, bullet_Width, bullet_Height);
+					
+				} 
+
+				
+			
+}
+	
+}
+	
+	
+	
+	
+	
+	
+}
+
 
 
 
@@ -412,10 +531,13 @@ void UpdateState(void) {
 	UpdatePlayer(&player1, ADCval) ;
 	ADC_In89 (ADCval);
 	UpdatePlayer(&player2, ADCval) ;
-	UpdateBullet(&player1);
-	UpdateBullet(&player2);
+	
+	
+	UpdateBullet(&player1, &shootFlag);
+	UpdateBullet(&player2, &shootFlag2);
 	CheckBullet (&player1);
 	CheckBullet (&player2);
+	CheckPlayerCollision();
 	
 
 	
@@ -434,11 +556,35 @@ void Render(void) {
 	
 	ST7735_DrawBitmap(player2.xCoordinate, player2.yCoordinate, tanks[player2.direction], Tank_Width, Tank_Height);
 	
-	if (player1.bullet.bulletLife == alive) {
+	for (int i = 0; i<Num_Bullets; i++) {
+	
+	if (player1.bullet[i].bulletLife == alive) {
 		
-		ST7735_DrawBitmap(player1.bullet.xCoordinate, player1.bullet.yCoordinate, bullet, bullet_Width, bullet_Height);
+		ST7735_DrawBitmap(player1.bullet[i].xCoordinate, player1.bullet[i].yCoordinate, bullet, bullet_Width, bullet_Height);
 		
 	}
+	
+	
+	if (player2.bullet[i].bulletLife == alive) {
+		
+		ST7735_DrawBitmap(player2.bullet[i].xCoordinate, player2.bullet[i].yCoordinate, bullet, bullet_Width, bullet_Height);
+		
+	}
+		
+	}
+	
+	ST7735_SetCursor(0,1);
+	LCD_OutDec (player1.health);
+	
+	
+	
+	ST7735_SetCursor(5,1);
+  LCD_OutDec(player2.health);
+	
+	
+	
+	
+	
 
 	
 	
@@ -448,10 +594,12 @@ void Render(void) {
 
 
 void Update (void) {
+	DisableInterrupts();
 	UpdateState();
 	Render();
 	shootFlag = 0 ;
-	
+	shootFlag2 = 0;
+	EnableInterrupts();
 }
 
 

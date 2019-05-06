@@ -15,13 +15,13 @@ void EdgeCounter_Init(void){
   GPIO_PORTF_DEN_R |= 0x02;     //     enable digital I/O on PF4	
   GPIO_PORTF_PCTL_R &= ~0x000F0000; // configure PF4 as GPIO
   GPIO_PORTF_AMSEL_R = 0;       //     disable analog functionality on PF
-  //GPIO_PORTF_PUR_R |= 0x10;     //     enable weak pull-up on PF4
+  GPIO_PORTF_PUR_R |= 0x0A;     //     enable weak pull-up on PF4
   GPIO_PORTF_IS_R &= ~0x08;     // (d) PF4 is edge-sensitive
 	GPIO_PORTF_IS_R &= ~0x02;     // (d) PF4 is edge-sensitive
   GPIO_PORTF_IBE_R &= ~0x08;    //     PF4 is not both edges
 	GPIO_PORTF_IBE_R &= ~0x02;    //     PF4 is not both edges
-  GPIO_PORTF_IEV_R &= ~0x08;    //     PF4 falling edge event
-	GPIO_PORTF_IEV_R &= ~0x02;    //     PF4 falling edge event
+  GPIO_PORTF_IEV_R |= 0x08;    //     PF4 falling edge event
+	GPIO_PORTF_IEV_R |= 0x02;    //     PF4 falling edge event
   GPIO_PORTF_ICR_R = 0x08;      // (e) clear flag4
 	GPIO_PORTF_ICR_R = 0x02;      // (e) clear flag4
   GPIO_PORTF_IM_R |= 0x08;      // (f) arm interrupt on PF4 *** No IME bit as mentioned in Book ***
@@ -31,21 +31,17 @@ void EdgeCounter_Init(void){
  
 }
 void GPIOPortF_Handler(void){
-  	
-
+ 
+	if ((GPIO_PORTF_DATA_R & 0x08) == 0x08) {
+		shootFlag = 1 ;
+	}
+	
+	if ((GPIO_PORTF_DATA_R & 0x02) == 0x02) {
+	shootFlag2 = 1 ;
+	}
+ // shootFlag = 1 ;
 	
 	
-	 if (GPIO_PORTF_DATA_R == 0x08) {
-		 
-		 shootFlag =1 ;
-		 
-		 
-	 }
-		
-	
-	
-		shootFlag2 =1 ;
-		
 	GPIO_PORTF_ICR_R = 0x08;      // acknowledge flag4
 	GPIO_PORTF_ICR_R = 0x02;
  

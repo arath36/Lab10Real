@@ -482,6 +482,16 @@
               <FileType>5</FileType>
               <FilePath>.\UpdateState.h</FilePath>
             </File>
+            <File>
+              <FileName>Shoot.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Shoot.c</FilePath>
+            </File>
+            <File>
+              <FileName>Shoot.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Shoot.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

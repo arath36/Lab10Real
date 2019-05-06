@@ -6,3 +6,4 @@
 .\init.o: ST7735.h
 .\init.o: PLL.h
 .\init.o: UpdateState.h
+.\init.o: Shoot.h
