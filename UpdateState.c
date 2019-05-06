@@ -3,12 +3,29 @@
 #include "../inc/tm4c123gh6pm.h"
 #include "ST7735.h"
 #include "ADC.h"
-
+#include "Shoot.h"
 
 #define Tank_Width 26
 #define Tank_Height 26
 #define blackHeight 25
+#define bullet_Width 8
+#define bullet_Height 8
 
+extern int shootFlag;
+const unsigned short whiteBullet[] = {
+ 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF,
+ 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF,
+ 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF,
+ 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF,
+};
+const unsigned short bullet[] = {
+ 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF,
+ 0xFFFF, 0xFFFF, 0x6412, 0x2AAF, 0x2AEF, 0xBE18, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0x345B, 0x4DBF, 0x76BF, 0x53D2, 0xFFFF, 0xFFFF,
+ 0xFFFF, 0xFFFF, 0x3CFB, 0x5E3F, 0x9F1F, 0x6412, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0x4C76, 0x7DFC, 0x861C, 0x7C93, 0xFFFF, 0xFFFF,
+ 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF,
+
+
+};
 
 
 const unsigned short tankUp[] = {
@@ -208,11 +225,20 @@ const unsigned short tankDown[] = {
 
 
 typedef enum direction {up = 0, down = 1, left = 2, right = 3} direction_t;
+typedef enum bulletLife {dead = 0, alive = 1} bulletLife_t;
 
 
 
 
 const unsigned short *tanks [4] = {tankUp, tankDown, tankLeft, tankRight};
+typedef struct bullet{
+	int16_t xCoordinate;
+	int16_t yCoordinate;
+	bulletLife_t bulletLife;
+	direction_t direction;
+	
+	
+} bullet_t;
 
 
 
@@ -221,13 +247,14 @@ typedef struct Player{
 	uint8_t yCoordinate;
 	uint8_t health;
 	direction_t direction;
-	
+	bullet_t bullet;
 	
 } player_t;
 
 
-player_t player1 = {0, 160, 100, up};
-player_t player2 = {128-Tank_Width, blackHeight + Tank_Height, 100, down};
+player_t player1 = {0, 160, 100, up, {0, 0, dead, up}};
+player_t player2 = {128-Tank_Width, blackHeight + Tank_Height, 100, down, {0, 0, dead, down}};
+
 
 
 
@@ -268,6 +295,7 @@ void UpdatePlayer (player_t* player, uint32_t ADCval[2]) {
 			
 		}
 		
+		
 	}
 	
 	if (ADCval[1] > 3600) {
@@ -296,6 +324,84 @@ void UpdatePlayer (player_t* player, uint32_t ADCval[2]) {
 	
 }
 
+void UpdateBullet(player_t *player) {
+	
+	
+	if (shootFlag == 1 && player->bullet.bulletLife == dead){
+		player->bullet.bulletLife = alive ;
+		player->bullet.direction = player-> direction ;
+		
+		if (player->bullet.direction == up) {
+			player->bullet.xCoordinate = player->xCoordinate + 9 ;
+			player->bullet.yCoordinate = player->yCoordinate - 24 ;
+		}
+		if (player->bullet.direction == down) {
+			player->bullet.xCoordinate = player->xCoordinate +9 ;
+			player->bullet.yCoordinate = player->yCoordinate +4 ;
+		}
+		if (player->bullet.direction == left) {
+			player->bullet.xCoordinate = player->xCoordinate-4 ;
+			player->bullet.yCoordinate = player->yCoordinate - 9 ;
+		}
+		if (player->bullet.direction == right) {
+			player->bullet.xCoordinate = player->xCoordinate + Tank_Height ;
+			player->bullet.yCoordinate = player->yCoordinate - 9 ;
+		}
+		
+	}
+	
+	if ( player->bullet.bulletLife == alive ) {
+		if (player->bullet.direction == up) {
+			player->bullet.yCoordinate -= 2;
+		}
+		
+		if (player->bullet.direction == down) {
+			player->bullet.yCoordinate += 2;
+		}
+				
+		if (player->bullet.direction == left) {
+			player->bullet.xCoordinate -= 2;
+		}
+				
+		if (player->bullet.direction == right) {
+			player->bullet.xCoordinate += 2;
+		}
+		
+	}
+	
+	if (player-> bullet.bulletLife == dead) {
+		
+	}
+	
+}
+
+void CheckBullet(player_t *player) {
+	
+	
+	if (player->bullet.bulletLife == alive){
+		if (player->bullet.yCoordinate <= blackHeight + bullet_Height) {
+			player->bullet.bulletLife = dead ;
+			ST7735_DrawBitmap(player1.bullet.xCoordinate, player1.bullet.yCoordinate, whiteBullet, bullet_Width, bullet_Height);
+		}
+		if (player->bullet.yCoordinate > 160) {
+			player->bullet.bulletLife = dead ;
+			ST7735_DrawBitmap(player1.bullet.xCoordinate, player1.bullet.yCoordinate, whiteBullet, bullet_Width, bullet_Height);
+		}
+		if (player->bullet.xCoordinate > 128-bullet_Width ){
+			player->bullet.bulletLife = dead ;
+			ST7735_DrawBitmap(player1.bullet.xCoordinate, player1.bullet.yCoordinate, whiteBullet, bullet_Width, bullet_Height);
+		}
+		if (player->bullet.xCoordinate < 0) {
+			player->bullet.bulletLife = dead ;
+			ST7735_DrawBitmap(player1.bullet.xCoordinate, player1.bullet.yCoordinate, whiteBullet, bullet_Width, bullet_Height);
+		}
+	}
+	
+	
+	
+	
+}
+
 
 
 void UpdateState(void) {
@@ -306,7 +412,10 @@ void UpdateState(void) {
 	UpdatePlayer(&player1, ADCval) ;
 	ADC_In89 (ADCval);
 	UpdatePlayer(&player2, ADCval) ;
-	
+	UpdateBullet(&player1);
+	UpdateBullet(&player2);
+	CheckBullet (&player1);
+	CheckBullet (&player2);
 	
 
 	
@@ -314,14 +423,24 @@ void UpdateState(void) {
 }
 
 
+
+
 void Render(void) {
 	
 	
-	
+
 	
 	ST7735_DrawBitmap(player1.xCoordinate, player1.yCoordinate, tanks[player1.direction], Tank_Width, Tank_Height);
 	
 	ST7735_DrawBitmap(player2.xCoordinate, player2.yCoordinate, tanks[player2.direction], Tank_Width, Tank_Height);
+	
+	if (player1.bullet.bulletLife == alive) {
+		
+		ST7735_DrawBitmap(player1.bullet.xCoordinate, player1.bullet.yCoordinate, bullet, bullet_Width, bullet_Height);
+		
+	}
+
+	
 	
 	
 	
@@ -331,6 +450,7 @@ void Render(void) {
 void Update (void) {
 	UpdateState();
 	Render();
+	shootFlag = 0 ;
 	
 }
 
