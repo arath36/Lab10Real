@@ -17,7 +17,9 @@ void Init (void) {
 	ADC_Init();
 	SysTick_Init();
 	Init_State();
-	EdgeCounter_Init ();
+=======
+	EdgeCounter_Init();
+>>>>>>> 6e8df69f3d247bc3293886c1a01d8f7db2d18d79
 	
 	
 }
