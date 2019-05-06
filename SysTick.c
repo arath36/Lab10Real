@@ -13,6 +13,8 @@ void SysTick_Init(){
 	NVIC_ST_CTRL_R = 0x07;
 	
 	
+	
+	
 }
 
 

@@ -229,13 +229,17 @@ const unsigned short tankDown[] = {
 
 
 
+
 typedef enum direction {up = 0, down = 1, left = 2, right = 3} direction_t;
 typedef enum bulletLife {dead = 0, alive = 1} bulletLife_t;
 
 
 
+// array of all of our tank positions
 
 const unsigned short *tanks [4] = {tankUp, tankDown, tankLeft, tankRight};
+
+// Bullet type
 typedef struct bullet{
 	
 	int16_t xCoordinate;
@@ -248,6 +252,8 @@ typedef struct bullet{
 
 
 
+// player type
+
 typedef struct Player{
 	int16_t xCoordinate;
 	int16_t yCoordinate;
@@ -258,6 +264,8 @@ typedef struct Player{
 } player_t;
 
 
+
+// initial values of the players 
 player_t player1 = {0, 160, 100, up};
 player_t player2 = {128-Tank_Width, blackHeight + Tank_Height, 100, down};
 
@@ -289,6 +297,8 @@ void Init_State(void) {
 	
 	ST7735_FillRect(68, 10, 60, 10, 0x57E0);
 	
+	// sets the initial bullet values of the players
+	
 	for (int i = 0; i < Num_Bullets; i++) {
 		player1.bullet[i].xCoordinate = 0;
 		player1.bullet[i].yCoordinate = 0;
@@ -308,10 +318,9 @@ void Init_State(void) {
 
 void UpdatePlayer (player_t* player, uint32_t ADCval[2]) {
 	
-	// Updates the players movement based on the position of the joystick
+	// Updates the players movement based on the position of the joysticks
 	
-	
-	// Here we check if a player is at the edges 
+	// Detects when players are at the edge of a the map and doesn't allow them to go further
 	
 		if (ADCval[0] > 3600) {
 		player->direction = up;
@@ -355,8 +364,9 @@ void UpdatePlayer (player_t* player, uint32_t ADCval[2]) {
 }
 
 void UpdateBullet(player_t *player, int *Flag) {
-	// Updates the bullets of each player
-	// Turns bullets alive if the button is pressed and increments all alive bullets for the player passed in
+	// Looks at every bullet in player passed in and updates all of them accordingly
+	// if the flag is up, then we initialize the first dead bullet in the array 
+	// increments all bullets that are alive in the array based on their direction
 	// DOES NOT CHECK if the bullet should dissapear
 	
 	
@@ -364,7 +374,7 @@ void UpdateBullet(player_t *player, int *Flag) {
 	for (int i = 0; i<Num_Bullets; i++) {
 		
 		
-	// starts the bullet
+	// initializes the first dead bullet if the flag is set
 	if (*Flag == 1 && player->bullet[i].bulletLife == dead){
 		*Flag = 0;
 		player->bullet[i].bulletLife = alive ;
@@ -472,6 +482,10 @@ void CheckBullet(player_t *player) {
 
 void CheckPlayerCollision(void){
 	
+	
+	// Here we iterate through every bullet and see if it has hit the opposing player
+	// if it has hit an opposing player, we decrease health and make the bullet dead and write over it
+	
 	for (int i =0; i<Num_Bullets; i++){
 	
 	if (player2.bullet[i].bulletLife == alive) {
@@ -482,7 +496,7 @@ void CheckPlayerCollision(void){
 				
 				if (xDifference > -(Tank_Width - 5) && xDifference < (bullet_Width-5) && 
 					yDifference > -(bullet_Height-5) && yDifference < (Tank_Height-5)) {
-					
+					// hit player 1
 					 player1.health -= 10;
 					 player2.bullet[i].bulletLife = dead;
 					 ST7735_DrawBitmap(player2.bullet[i].xCoordinate, player2.bullet[i].yCoordinate, whiteBullet, bullet_Width, bullet_Height);
@@ -500,7 +514,7 @@ void CheckPlayerCollision(void){
 		
 				if (xDifference > -(Tank_Width - 5) && xDifference < (bullet_Width-5) && 
 					yDifference > -(bullet_Height-5) && yDifference < (Tank_Height-5)) {
-					
+					//hit player 2
 					 player2.health -= 10;
 					 player1.bullet[i].bulletLife = dead;
 					 ST7735_DrawBitmap(player1.bullet[i].xCoordinate, player1.bullet[i].yCoordinate, whiteBullet, bullet_Width, bullet_Height);
@@ -548,13 +562,15 @@ void UpdateState(void) {
 
 
 void Render(void) {
+	// Update updates all the values, render just puts it on the screen
 	
-	
-
+// draw the tanks based on their new position
 	
 	ST7735_DrawBitmap(player1.xCoordinate, player1.yCoordinate, tanks[player1.direction], Tank_Width, Tank_Height);
 	
 	ST7735_DrawBitmap(player2.xCoordinate, player2.yCoordinate, tanks[player2.direction], Tank_Width, Tank_Height);
+	
+	// draw all alive bullets for player 1 and player 2
 	
 	for (int i = 0; i<Num_Bullets; i++) {
 	
@@ -594,6 +610,8 @@ void Render(void) {
 
 
 void Update (void) {
+	
+	// while this is updating, we should not mess with the shootflag as it's a critical section
 	DisableInterrupts();
 	UpdateState();
 	Render();
